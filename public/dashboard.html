@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MyWeeklyAllowance</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .wallet-balance {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert.error { background: #fee; color: #c33; }
+        .alert.success { background: #efe; color: #3c3; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .info-item {
+            padding: 15px;
+            background: #f5f7fa;
+            border-radius: 8px;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>💰 MyWeeklyAllowance</h1>
+            <button onclick="logout()" class="secondary">Déconnexion</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="alert" id="alert"></div>
+
+        <div class="card">
+            <h2>Mon Compte</h2>
+            <div id="user-info"></div>
+        </div>
+
+        <div class="card" id="wallet-section" style="display: none;">
+            <h2>Mon Porte-monnaie</h2>
+            <div class="wallet-balance" id="balance">0 €</div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Allocation hebdomadaire</div>
+                    <div class="info-value" id="allowance">0 €</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Dernière allocation</div>
+                    <div class="info-value" id="lastAllowance">Jamais</div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button onclick="openModal('expense')">🛒 Dépense</button>
+                <button onclick="openModal('deposit')" id="btn-deposit" style="display: none;">💵 Déposer</button>
+                <button onclick="openModal('allowance')" id="btn-allowance" style="display: none;">📅 Allocation</button>
+            </div>
+        </div>
+
+        <div class="card" id="no-wallet" style="display: none;">
+            <h2>Pas encore de porte-monnaie</h2>
+            <p id="no-wallet-message">Créez votre porte-monnaie pour commencer !</p>
+            <button onclick="createWallet()" id="btn-create-wallet" style="margin-top: 20px;">Créer mon porte-monnaie</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="deposit-modal">
+        <div class="modal-content">
+            <h3>Déposer de l'argent</h3>
+            <input type="number" id="deposit-amount" placeholder="Montant (€)" min="1">
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="handleDeposit()">Confirmer</button>
+                <button onclick="closeModals()" class="secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="expense-modal">
+        <div class="modal-content">
+            <h3>Enregistrer une dépense</h3>
+            <input type="number" id="expense-amount" placeholder="Montant (€)" min="1">
+            <input type="text" id="expense-description" placeholder="Description (optionnel)">
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="handleExpense()">Confirmer</button>
+                <button onclick="closeModals()" class="secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="allowance-modal">
+        <div class="modal-content">
+            <h3>Définir l'allocation hebdomadaire</h3>
+            <input type="number" id="allowance-amount" placeholder="Montant (€)" min="0">
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="handleAllowance()">Confirmer</button>
+                <button onclick="closeModals()" class="secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentWallet = null;
+
+        async function loadUserData() {
+            const userId = localStorage.getItem('userId');
+            const userRole = localStorage.getItem('userRole');
+            
+            if (!userId) {
+                window.location.href = '/';
+                return;
+            }
+
+            document.getElementById('user-info').innerHTML = `
+                <p><strong>ID:</strong> ${userId}</p>
+                <p><strong>Email:</strong> ${localStorage.getItem('userEmail')}</p>
+                <p><strong>Rôle:</strong> ${userRole}</p>
+            `;
+
+            // Gérer les permissions selon le rôle
+            const isParent = userRole.includes('PARENT');
+            const isTeen = userRole.includes('TEEN');
+
+            if (isParent) {
+                // Parent peut déposer et gérer l'allocation
+                document.getElementById('btn-deposit').style.display = 'block';
+                document.getElementById('btn-allowance').style.display = 'block';
+            } else if (isTeen) {
+                // Teen ne peut que voir et dépenser
+                document.getElementById('btn-deposit').style.display = 'none';
+                document.getElementById('btn-allowance').style.display = 'none';
+            }
+
+            await loadWallet(userId, isTeen);
+        }
+
+        async function loadWallet(userId, isTeen) {
+            try {
+                const response = await fetch(`/api/wallet/${userId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    currentWallet = data.data;
+                    document.getElementById('wallet-section').style.display = 'block';
+                    document.getElementById('no-wallet').style.display = 'none';
+                    updateWalletDisplay();
+                } else {
+                    document.getElementById('wallet-section').style.display = 'none';
+                    document.getElementById('no-wallet').style.display = 'block';
+                    
+                    // Message différent selon le rôle
+                    if (isTeen) {
+                        document.getElementById('no-wallet-message').textContent = 
+                            'Votre parent doit créer votre porte-monnaie.';
+                        document.getElementById('btn-create-wallet').style.display = 'none';
+                    } else {
+                        document.getElementById('no-wallet-message').textContent = 
+                            'Créez un porte-monnaie pour votre adolescent !';
+                        document.getElementById('btn-create-wallet').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                document.getElementById('no-wallet').style.display = 'block';
+            }
+        }
+
+        function updateWalletDisplay() {
+            document.getElementById('balance').textContent = (currentWallet.balance / 100).toFixed(2) + ' €';
+            document.getElementById('allowance').textContent = (currentWallet.weeklyAllowance / 100).toFixed(2) + ' €';
+            document.getElementById('lastAllowance').textContent = currentWallet.lastAllowanceDate || 'Jamais';
+        }
+
+        async function createWallet() {
+            const userId = parseInt(localStorage.getItem('userId'));
+            try {
+                const response = await fetch('/api/wallet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userId, initialBalance: 0 })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert('Porte-monnaie créé !', 'success');
+                    const isTeen = localStorage.getItem('userRole').includes('TEEN');
+                    await loadWallet(userId, isTeen);
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Erreur lors de la création', 'error');
+            }
+        }
+
+        async function handleDeposit() {
+            const amount = parseInt(document.getElementById('deposit-amount').value * 100);
+            if (!amount || amount <= 0) return;
+
+            try {
+                const response = await fetch('/api/wallet/deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletId: currentWallet.id, amount })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    currentWallet = data.data;
+                    updateWalletDisplay();
+                    closeModals();
+                    showAlert('Dépôt effectué !', 'success');
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Erreur', 'error');
+            }
+        }
+
+        async function handleExpense() {
+            const amount = parseInt(document.getElementById('expense-amount').value * 100);
+            const description = document.getElementById('expense-description').value;
+            if (!amount || amount <= 0) return;
+
+            try {
+                const response = await fetch('/api/wallet/expense', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletId: currentWallet.id, amount, description })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    currentWallet = data.data;
+                    updateWalletDisplay();
+                    closeModals();
+                    showAlert('Dépense enregistrée !', 'success');
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Erreur', 'error');
+            }
+        }
+
+        async function handleAllowance() {
+            const amount = parseInt(document.getElementById('allowance-amount').value * 100);
+            if (amount < 0) return;
+
+            try {
+                const response = await fetch('/api/wallet/allowance', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ walletId: currentWallet.id, amount })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    currentWallet = data.data;
+                    updateWalletDisplay();
+                    closeModals();
+                    showAlert('Allocation définie !', 'success');
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Erreur', 'error');
+            }
+        }
+
+        function openModal(type) {
+            closeModals();
+            document.getElementById(type + '-modal').classList.add('active');
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type;
+            alert.style.display = 'block';
+            setTimeout(() => alert.style.display = 'none', 3000);
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+
+        // Charger les données au démarrage
+        loadUserData();
+    </script>
+</body>
+</html>
