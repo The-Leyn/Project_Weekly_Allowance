@@ -1,0 +1,15 @@
+# Dépendances PHP (on les réinstalle avec composer install)
+/vendor/
+
+# Fichiers d'environnement (contient les mots de passe !)
+.env
+
+# Dossiers systèmes et IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Cache PHPUnit
+.phpunit.cache
+/build/
+/docker/mysql-data/
